@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>HALL TICKET</title>  
+		<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+	</head>
+	<body>
+		<h1 align="center">HALL TICKET GENERATOR</h1>
+		<div>
+			REGISTRATION NUMBER: <input type="text" id="rollno" size="100"/>
+			<input type="button" id="gethallticket" value="Get Hall Ticket"/>
+		</div>
+		<div id="hallticket" style="display: none;margin: 20px 30% 20px 30%;padding: 20px;border: 1px solid;">
+			<h2 align="center">HALL TICKET</h2>
+			<div style="display: flex;">
+				<div id="info-container" style="flex: 4 1 0%">
+					<div><span style="font-weight:600;">Roll No: </span><span id="rollnoout"></span></div>
+					<div><span style="font-weight:600;">Name: </span><span id="name"></span></div>
+					<div><span style="font-weight:600;">Semester: </span><span id="semester"></span></div>
+					<div><span style="font-weight:600;">Branch: </span><span id="branch"></span></div>
+				</div>
+				<div id="img-container" style="flex: 1 1 0%">
+					<img id="photo"/>
+				</div>
+			</div>
+			<div>
+				<table id="subjects-table" border="2">
+				</table>
+			</div>
+		</div>
+	</body>
+</html>
+<script>
+
+jQuery(function($){
+	if (!("WebSocket" in window)) {
+		alert("Your browser does not support web sockets");
+	}else{
+		setup();
+	}
+
+
+	function setup(){
+
+		// Note: You have to change the host var 
+		// if your client runs on a different machine than the websocket server
+
+		var host = "ws://localhost:9090/ws";
+		var socket = new WebSocket(host);
+		//console.log("socket status: " + socket.readyState);   
+
+		var $txt = $("#rollno");
+		var $btnSend = $("#gethallticket");
+
+		$txt.focus();
+
+		// event handlers for UI
+		$btnSend.on('click',function(){
+			var text = $txt.val();
+			if(text == ""){
+				return;
+			}
+			socket.send(text);
+			$txt.val("");    
+		});
+
+		$txt.keypress(function(evt){
+			if(evt.which == 13){
+				$btnSend.click();
+			}
+		});
+
+		// event handlers for websocket
+		if(socket){
+
+			socket.onopen = function(){
+				//alert("connection opened....");
+			}
+
+			socket.onmessage = function(msg){
+				showServerResponse(msg.data);
+			}
+
+			socket.onclose = function(){
+				//alert("connection closed....");
+				showServerResponse("The connection has been closed.");
+			}
+
+		}else{
+			console.log("invalid socket");
+		}
+
+		function showServerResponse(txt){
+			var data = JSON.parse(txt);
+			document.getElementById('rollnoout').innerHTML = data[0].toString();
+			document.getElementById('name').innerHTML = data[1].toString();
+			document.getElementById('semester').innerHTML = data[2].toString();
+			document.getElementById('branch').innerHTML = data[3].toString();
+			var hallticketEl = $('#hallticket'), table = $('#subjects-table');
+			var subjects = data[4].split(","), dates = data[5].split(",");
+			table.empty();
+			table.append("<tr><th>Subject</th><th>Date</th></tr>");
+			for (var i = 0; i < subjects.length; i++) {
+				table.append("<tr><td>" + subjects[i] + 
+				"</td><td>" + dates[i] + "</td></tr>");
+			}
+			document.getElementById('photo').setAttribute('src', 'data:image/png;base64,'+data[6]);
+			hallticketEl.css('display', 'block');
+		}
+	}
+});
+
+</script>
